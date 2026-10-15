@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  role      String   @default("HUSBAND") // HUSBAND, WIFE, JOINT
+  pin       String?  // Optional PIN for profile switching/security
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id            String        @id @default(uuid())
+  name          String
+  type          String        @default("BANK") // BANK, CASH, EWALLET, INVESTMENT, OTHER
+  owner         String        @default("JOINT") // HUSBAND, WIFE, JOINT
+  balance       Float         @default(0)
+  accountNumber String?
+  color         String?       @default("#3B82F6")
+  icon          String?       @default("Wallet")
+  isDefault     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  transactions  Transaction[] @relation("FromAccount")
+  receivedTrans Transaction[] @relation("ToAccount")
+}
+
+model Category {
+  id          String        @id @default(uuid())
+  name        String
+  type        String        @default("EXPENSE") // EXPENSE, INCOME
+  budgetRule  String        @default("NEEDS")   // NEEDS (50%), WANTS (30%), SAVINGS (20%), OTHER
+  icon        String        @default("Tag")
+  color       String        @default("#6B7280")
+  isDefault   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  date          DateTime  @default(now())
+  type          String    // EXPENSE, INCOME, TRANSFER
+  amount        Float
+  title         String
+  notes         String?
+  performedBy   String    @default("JOINT") // HUSBAND, WIFE, JOINT
+  beneficiary   String?   @default("FAMILY") // HUSBAND, WIFE, FAMILY
+  
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  accountId     String
+  account       Account   @relation("FromAccount", fields: [accountId], references: [id], onDelete: Cascade)
+
+  toAccountId   String?
+  toAccount     Account?  @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Budget {
+  id          String    @id @default(uuid())
+  month       Int       // 1 - 12
+  year        Int       // e.g. 2026
+  amount      Float
+  
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([categoryId, month, year])
+}
+
+model FinancialGoal {
+  id            String    @id @default(uuid())
+  title         String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  owner         String    @default("JOINT") // HUSBAND, WIFE, JOINT
+  notes         String?
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
